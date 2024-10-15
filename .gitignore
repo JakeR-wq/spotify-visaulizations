@@ -1,0 +1,9 @@
+.env
+pyvenv.cfg
+.cache
+.cache-username
+/.venv
+/bin
+/include
+/lib64
+/lib
