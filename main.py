@@ -1,11 +1,9 @@
 from spotipy import Spotify
-import spotipy.util as util
-from spotipy.oauth2 import SpotifyClientCredentials
 from spotipy.oauth2 import SpotifyOAuth
 import pandas as pd
 import json
 import os
-from dotenv import load_dotenv, find_dotenv
+from dotenv import load_dotenv
 from datetime import datetime
 import time
 
@@ -15,16 +13,21 @@ load_dotenv()
 SPOTIPY_CLIENT_ID = os.environ.get("SPOTIFY_CLIENT")
 SPOTIPY_CLIENT_SECRET = os.environ.get("SPOTIFY_SECRET")
 SPOTIPY_REDIRECT_URI = 'http://localhost'
+print('Successfully loaded environment variables')
 scope = "user-top-read user-read-currently-playing user-read-recently-played"
 # token = util.prompt_for_user_token(username='username', scope=scope, client_id=SPOTIPY_CLIENT_ID, client_secret=SPOTIPY_CLIENT_SECRET, redirect_uri=SPOTIPY_REDIRECT_URI)
 sp_oauth = SpotifyOAuth(client_id=SPOTIPY_CLIENT_ID, client_secret=SPOTIPY_CLIENT_SECRET, redirect_uri=SPOTIPY_REDIRECT_URI, scope=scope)
-print('Successfully loaded environment variables')
+
+# have to create this and add an empty json object, in this case just put "{}" in there to not break json library
+# this could be fixed just no point 
 TOKEN_FILE = '.cache'
 
+# put the new token into the .cache file
 def save_token(token_info):
     with open(TOKEN_FILE, 'w') as f:
         json.dump(token_info, f)
 
+# loads a token from .cache
 def load_token():
     if not os.path.exists(TOKEN_FILE):
         return None
@@ -32,6 +35,7 @@ def load_token():
         token_info = json.load(f)
     return token_info
 
+# get our token, check if it's valid, check if it needs refreshing, return our token
 def get_token():
     token_info = load_token()
 
@@ -45,7 +49,9 @@ def get_token():
         print("Token expired, refreshing...")
         token_info = sp_oauth.refresh_access_token(token_info['refresh_token'])
         save_token(token_info)
+    token_time = datetime.fromtimestamp(token_info['expires_at']) - datetime.now()
     print("token is valid, continuing...")
+    print("Token life remaining: ", token_time)
     return token_info['access_token']
 
 def welcome():
@@ -57,6 +63,8 @@ def collect_songs():
     # Load environment variables
     token = get_token()
     sp = Spotify(auth=token)
+
+    # leaving this here, may possibly use this
 
     # tracks = []
     # spotifyreturn = sp.current_user_recently_played(limit=50)
@@ -104,6 +112,10 @@ def collect_songs():
         artist_info = sp.artist(artist_id)  
         genres = artist_info['genres']
 
+        # get some cool track info 
+        # https://developer.spotify.com/documentation/web-api/reference/get-audio-features
+        track_data = sp.audio_features(current_song_id)
+
         # making sure we dont add duplicates; listening to the same song
         if current_song_id != currently_playing_id:
             # Create a new entry for the track
@@ -119,10 +131,23 @@ def collect_songs():
                 'total_tracks': track['album']['total_tracks'],
                 'release_date': track['album']['release_date'],
                 'cover_image': track['album']['images'][0]['url'] if track['album']['images'] else None,
-                'available_markets': ', '.join(track['album']['available_markets']),
                 'date_played': readable_date,
                 'popularity': track['popularity'],
-                'genres': ', '.join(genres)
+                'genres': ', '.join(genres),
+                'acousticness': track_data[0]['acousticness'],
+                'danceability': track_data[0]['danceability'],
+                'duration_ms': track_data[0]['duration_ms'],
+                'energy': track_data[0]['energy'],
+                'instrumentalness': track_data[0]['instrumentalness'],
+                'key': track_data[0]['key'],
+                'liveness': track_data[0]['liveness'],
+                'loudness': track_data[0]['loudness'],
+                'mode': track_data[0]['mode'],
+                'speechiness': track_data[0]['speechiness'],
+                'tempo': track_data[0]['tempo'],
+                'time_signature': track_data[0]['time_signature'],
+                'valence': track_data[0]['valence']
+
             }
 
             # put the track's info into a dataframe then append to the csv

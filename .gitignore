@@ -2,8 +2,9 @@
 pyvenv.cfg
 .cache
 .cache-username
-/.venv
+/venv
 /bin
 /include
 /lib64
 /lib
+*.csv
